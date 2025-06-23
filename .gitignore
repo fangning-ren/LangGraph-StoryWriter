@@ -6,10 +6,19 @@ dist/
 wheels/
 *.egg-info
 
+# explicit contents (不要上传小黄文丢死人了)
+*R18*
+*.log
+*archive
+
 # Virtual environments
 .env
 .venv/
 .vscode/
+.stories/koishi*
+.prompts/*R18*
+.prompts/koishi*
+.previous/
 
 # selected_folders
 Generation*
