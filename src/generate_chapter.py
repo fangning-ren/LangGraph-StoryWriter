@@ -48,6 +48,29 @@ class CheckChapterCount(BasicNovelWriterAgent):
         return state
     
 
+class ChapterOutlineFilterAgent(BasicNovelWriterAgent):
+    def __init__(self, llm: OllamaLLM, 
+                 system_prompt: str = WRITER_SYSTEM,
+                 prompt_template: str = CHAPTER_OUTLINE_FILTER_PROMPT,
+                 personal_preference_prompt: str = PERSONAL_PREFERENCE_PROMPT,
+                 ) -> None:
+        super().__init__(llm, system_prompt, prompt_template, personal_preference_prompt)
+
+    def __call__(self, state: NovelState) -> NovelState:
+        cidx = state["current_chapter_index"]
+        user_prompt = self.prompt_template.format(
+            _ChapterNum = cidx + 1,
+            _Outline = state["outline"],
+            _Prompt = state["revised_user_context"],
+            _ChapterOutline = state["chapters"][cidx]["outline"],
+        )
+        response = self._call_llm(state, user_prompt, with_history = False)
+        chapter = state["chapters"][cidx]
+        chapter: ChapterState
+        chapter["outline"] = response
+        return state
+
+
 class ChapterOutlineAgent(BasicNovelWriterAgent):
     def __init__(self, llm: OllamaLLM, 
                  system_prompt: str = WRITER_SYSTEM,
@@ -62,39 +85,41 @@ class ChapterOutlineAgent(BasicNovelWriterAgent):
 
     def __call__(self, state: NovelState) -> NovelState:
         self._add_personal_preference()
-        for i in range(len(state["chapters"])):
-            state["current_chapter_index"] = i
-            user_prompt = self.prompt_template.format(
-                _ChapterNum=i+1,
-                _Outline=state["outline"],
-                _Prompt=state["revised_user_context"],
+        cidx = state["current_chapter_index"]
+        chapter = state["chapters"][cidx]
+        chapter: ChapterState 
+        user_prompt = self.prompt_template.format(
+            _ChapterNum = cidx + 1,
+            _Outline = state["outline"],
+            _Prompt = state["revised_user_context"],
+        )
+        response = self._call_llm(state, user_prompt, logfile_suffix = f"chapter-{cidx+1}", with_history = False)
+        for i in range(self.max_retry):
+            if len(response) >= self.min_response_length:
+                break
+            print(f"Retrying chapter outline generation for chapter {cidx+1}, response too short: {len(response)} < {self.min_response_length}")
+            user_prompt_1 = user_prompt + INSUFFICIENT_LENGTH_PROMPT.format(
+                _Length = self.min_response_length,
             )
-            response = self._call_llm(state, user_prompt, logfile_suffix = f"chapter-{i+1}", with_history = False)
-            for j in range(self.max_retry):
-                if len(response) >= self.min_response_length:
-                    break
-                print(f"Retrying chapter outline generation for chapter {i+1}, response too short: {len(response)} < {self.min_response_length}")
-                user_prompt_1 = user_prompt + INSUFFICIENT_LENGTH_PROMPT.format(
-                    _Length = self.min_response_length,
-                )
-                response = self._call_llm(state, user_prompt_1, logfile_suffix = f"chapter-{i+1}-retry-{j+1}", with_history = False)
-            else:
-                print(f"max retry reached for chapter {i+1}, response too short: {len(response)} < {self.min_response_length}")
-
-            user_prompt_2 = CHAPTER_OUTLINE_FILTER_PROMPT.format(
-                _ChapterNum = i + 1,
-                _Outline = state["outline"],
-                _Prompt = state["revised_user_context"],
-                _ChapterOutline = response,
-            )
-            response = self._call_llm(state, user_prompt_2, logfile_suffix = f"chapter-{i+1}-filter", with_history = False)
-
-            chapter = state["chapters"][i]
-            chapter:ChapterState
-            chapter["outline"] = response
-            chapter["settings"] = state["story_settings"]
+            response = self._call_llm(state, user_prompt_1, logfile_suffix = f"chapter-{cidx+1}-retry-{i+1}", with_history = False)
+        else:
+            print(f"max retry reached for chapter {cidx+1}, response too short: {len(response)} < {self.min_response_length}")
+        chapter["outline"] = response
         return state
     
+def switch_chapter_outline(state: NovelState) -> NovelState:
+    """
+    Switch to the next chapter outline.
+    """
+    state["current_chapter_index"] += 1
+    return state
+
+def is_last_chapter_outline(state: NovelState) -> bool:
+    """
+    Check if the current chapter is the last chapter.
+    """
+    cidx = state["current_chapter_index"]
+    return cidx >= len(state["chapters"])
 
 def reset_chapter(state: NovelState) -> NovelState:
     """
@@ -331,7 +356,34 @@ class CritiqueChapterGeneralAgent(BasicNovelWriterAgent):
         response = self._call_llm(state, user_prompt)
         state["chapters"][state["current_chapter_index"]]["current_feedback"] = response
         return state
-    
+
+class CritiqueChapterScoreAgent(BasicNovelWriterAgent):
+    def __init__(
+        self,
+        llm: OllamaLLM,
+        system_prompt: str = CRITIQUE_SYSTEM,
+        prompt_template: str =  CRITIC_CHAPTER_SCORE_PROMPT,
+        personal_preference_prompt: str = PERSONAL_PREFERENCE_PROMPT,
+    ) -> None:
+        super().__init__(llm, system_prompt, prompt_template, personal_preference_prompt)
+
+    def __call__(self, state: NovelState) -> NovelState:
+        self._add_personal_preference()
+        user_prompt = self.prompt_template.format(
+            _Prompt=state["revised_user_context"],
+            _Outline=state["outline"],
+            _ChapterOutline=state["chapters"][state["current_chapter_index"]]["outline"],
+            _Chapter=state["chapters"][state["current_chapter_index"]]["content"],
+            _ChapterNum=state["current_chapter_index"] + 1,
+            _LastChapterNum=state["current_chapter_index"] + 1 - 1,
+            _NextChapterNum=state["current_chapter_index"] + 1 + 1
+        )
+        response = self._call_llm(state, user_prompt)
+        score = get_chapter_score(response)
+        state["chapters"][state["current_chapter_index"]]["chapter_score"] = score
+        state["chapters"][state["current_chapter_index"]]["outline_complete"] = (score >= 6)
+        return state
+
 
 class ChapterRevisionAgent(BasicNovelWriterAgent):
     def __init__(

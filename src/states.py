@@ -112,6 +112,7 @@ class ChapterState(BaseModel):
     outline_max_revisions: int = Field(default=0, description="Maximum number of revisions allowed for the chapter outline")
     content_revision_count: int = Field(default=0, description="Number of revisions made to the chapter")
     content_max_revisions: int = Field(default=3, description="Maximum number of revisions allowed for the chapter")
+    chapter_score: float = Field(default=0.0, description="Score of the chapter, can be used to evaluate the quality of the chapter")
 
     class Config:
         arbitrary_types_allowed = True

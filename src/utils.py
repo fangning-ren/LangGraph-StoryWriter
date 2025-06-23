@@ -33,6 +33,37 @@ def remove_empty_lines(raw_response: str, re_join:bool = True, max_line_length: 
         raw_response = non_empty_lines
     return raw_response
   
+import re 
+def get_chapter_score(llm_response: str) -> float:
+    """
+    检查LLM回复的章节评分是否合格。
+    - 任意一项得分低于5分，返回False。
+    - 平均分低于6分，返回False。
+    - 否则返回True。
+    """
+    # 匹配每一项的评分，格式如：- **定性**：[理由] | [分数]
+    pattern = r"- \*\*[^*]+\*\*：.*\|\s*(\d+)"
+
+    matches = re.findall(pattern, llm_response)
+    if not matches:
+        print("Warning: No scores found in the response:\n\n" + llm_response + "\n")
+        return True  # 如果没有找到评分，默认认为是合格的
+
+    scores = []
+    for match in matches:
+        try:
+            score = int(match.strip())
+            scores.append(score)
+        except ValueError:
+            print(f"Warning: Invalid score found in the response: {match}")
+            scores.append(6)  # 默认分数为6，如果无法解析则认为是合格的
+
+    if any(score < 5 for score in scores):
+        return min(scores)
+    avg = sum(scores) / len(scores)
+    return avg
+
+
 
 
 def remove_think(raw_response: str) -> str:

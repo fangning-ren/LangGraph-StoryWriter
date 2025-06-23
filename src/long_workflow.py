@@ -114,16 +114,29 @@ def build_graph(planner_llm:BaseLLM, writer_llm:BaseLLM, critic_llm:BaseLLM, rev
     graph_builder.add_node("check_chapter_count", CheckChapterCount(llm=planner), retry=retry_policy)
     graph_builder.add_edge("generate_full_outline", "check_chapter_count")
 
+    # chapter outline generation and filtering
     graph_builder.add_node("chapter_outline", ChapterOutlineAgent(llm=writer), retry=retry_policy)
-
+    graph_builder.add_node("chapter_outline_filter", ChapterOutlineFilterAgent(llm=reviser), retry=retry_policy)
+    graph_builder.add_node("switch_chapter_outline", switch_chapter_outline)
+    graph_builder.add_node("reset_chapter", reset_chapter)
+    graph_builder.add_node("dummy_chapter_outline_node", lambda state: state, retry=retry_policy)  # Dummy node to keep the structure consistent
 
     
-    graph_builder.add_edge("check_chapter_count", "chapter_outline")
-    graph_builder.add_node("reset_chapter", reset_chapter)
-    graph_builder.add_edge("chapter_outline", "reset_chapter")
+    graph_builder.add_edge("check_chapter_count", "dummy_chapter_outline_node")
+    graph_builder.add_conditional_edges(
+        "dummy_chapter_outline_node",
+        is_last_chapter_outline,
+        {
+            False: "chapter_outline",
+            True : "reset_chapter",
+        },
+    )
+    graph_builder.add_edge("chapter_outline", "chapter_outline_filter")
+    graph_builder.add_edge("chapter_outline_filter", "switch_chapter_outline")
+    graph_builder.add_edge("switch_chapter_outline", "dummy_chapter_outline_node")
 
 
-    # chapter writing, complex route to improve quality
+    # character information generation and chapter generation
     graph_builder.add_node("adjust_character", AdjustCharacterAgent(llm=planner), retry=retry_policy)
     graph_builder.add_node("add_character", AddCharacterAgent(llm=writer), retry=retry_policy)
     graph_builder.add_node("last_chaptersummary", LastChapterSummaryAgent(llm=planner), retry=retry_policy)
@@ -139,7 +152,8 @@ def build_graph(planner_llm:BaseLLM, writer_llm:BaseLLM, critic_llm:BaseLLM, rev
     # chapter critique and revision
     graph_builder.add_node("dummy_chapter_node", lambda state: state, retry=retry_policy)  # Dummy node to keep the structure consistent
     graph_builder.add_node("critique_chapter_general", CritiqueChapterGeneralAgent(llm=critic, prompt_template=CRITIC_CHAPTER_GENERAL_PROMPT), retry=retry_policy)
-    graph_builder.add_node("critique_chapter_complete", CritiqueChapterCompleteAgent(llm=critic, prompt_template=CRITIC_CHAPTER_COMPLETE_PROMPT), retry=retry_policy)
+    # graph_builder.add_node("critique_chapter_complete", CritiqueChapterCompleteAgent(llm=critic, prompt_template=CRITIC_CHAPTER_COMPLETE_PROMPT), retry=retry_policy)
+    graph_builder.add_node("critique_chapter_score", CritiqueChapterScoreAgent(llm=critic, prompt_template=CRITIC_CHAPTER_SCORE_PROMPT), retry=retry_policy)
     graph_builder.add_node("chapter_revision", ChapterRevisionAgent(llm=reviser, prompt_template=CHAPTER_REVISION_PROMPT), retry=retry_policy)
     
     graph_builder.add_edge("chapter_generation", "dummy_chapter_node")
@@ -147,12 +161,12 @@ def build_graph(planner_llm:BaseLLM, writer_llm:BaseLLM, critic_llm:BaseLLM, rev
         "dummy_chapter_node",
         is_max_chapter_review_reached,
         {
-            False: "critique_chapter_complete",
+            False: "critique_chapter_score",
             True : "character_update",
         },
     )
     graph_builder.add_conditional_edges(
-        "critique_chapter_complete",
+        "critique_chapter_score",
         is_chapter_complete,
         {
             False: "critique_chapter_general",
