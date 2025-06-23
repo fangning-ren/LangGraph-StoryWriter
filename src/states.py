@@ -111,7 +111,7 @@ class ChapterState(BaseModel):
     outline_revision_count: int = Field(default=0, description="Number of revisions made to the chapter outline")
     outline_max_revisions: int = Field(default=0, description="Maximum number of revisions allowed for the chapter outline")
     content_revision_count: int = Field(default=0, description="Number of revisions made to the chapter")
-    content_max_revisions: int = Field(default=0, description="Maximum number of revisions allowed for the chapter")
+    content_max_revisions: int = Field(default=3, description="Maximum number of revisions allowed for the chapter")
 
     class Config:
         arbitrary_types_allowed = True
@@ -215,7 +215,7 @@ class NovelState(BaseModel):
     current_feedback: str = Field(default="", description="Current feedback from LLM about the story")
     outline_complete: bool = Field(default=False, description="Whether the outline of the story is complete")
     n_outline_reviews: int = Field(default=0, description="Number of reviews made to the story outline")
-    max_outline_reviews: int = Field(default=1, description="Maximum number of reviews allowed for the story outline")
+    max_outline_reviews: int = Field(default=3, description="Maximum number of reviews allowed for the story outline")
 
     # repeat
     n_repeats: int = Field(default=0, description="Number of times the story has been repeated")

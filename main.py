@@ -39,21 +39,22 @@ if __name__ == "__main__":
     # llm4 = Together(model="deepseek-ai/DeepSeek-V3", max_tokens=12800, temperature=0.7)
 
     # benchmark, use larger model
-    planner = Together (model="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", temperature=0.2, max_tokens=12800)
+    planner = OllamaLLM(model="deepseek-r1:32b", temperature=0.0, max_tokens=16384)
     writer  = Together (model="deepseek-ai/DeepSeek-V3", temperature=0.7, max_tokens=16384)
     reviser = Together (model="deepseek-ai/DeepSeek-V3", temperature=0.2, max_tokens=16384)
     critic  = Together (model="deepseek-ai/DeepSeek-V3", temperature=0.2, max_tokens=16384)
-
+    
     # debugging, use smaller model
-    # planner = OllamaLLM(model="deepseek-r1:32b", temperature=0.2, max_tokens=8192)
-    # writer  = OllamaLLM(model="deepseek-r1:32b", temperature=0.7, max_tokens=8192) 
-    # critic  = OllamaLLM(model="deepseek-r1:32b", temperature=0.2, max_tokens=8192)
-    # reviser = OllamaLLM(model="deepseek-r1:32b", temperature=0.2, max_tokens=8192)
+    # planner = OllamaLLM(model="deepseek-r1:14b", temperature=0.2, max_tokens=8192)
+    # writer  = OllamaLLM(model="deepseek-r1:14b", temperature=0.7, max_tokens=8192) 
+    # critic  = OllamaLLM(model="deepseek-r1:14b", temperature=0.2, max_tokens=8192)
+    # reviser = OllamaLLM(model="deepseek-r1:14b", temperature=0.2, max_tokens=8192)
 
     graph = build_graph(planner, writer, critic, reviser)
     graph = graph.compile()
     print(graph.get_graph().draw_mermaid())
 
+    # exit(0) # debugging, exit before running the workflow
     import sys
     storyname = sys.argv[1] if len(sys.argv) > 1 else "1942"
 

@@ -103,7 +103,7 @@ class BasicNovelWriterAgent(ABC):
         if self.personal_preference_prompt and self.personal_preference_prompt not in self.prompt_template:
             self.prompt_template = self.personal_preference_prompt + "\n" + self.prompt_template
     
-    def _call_llm(self, state: NovelState, user_prompt: str, with_history: bool = False, filter_think: bool = True, format_json: bool = False, logfile_suffix = None) -> str:
+    def _call_llm(self, state: NovelState, user_prompt: str, with_history: bool = False, filter_think: bool = True, format_json: bool = False, logfile_suffix = None, add_to_history: bool = True) -> str:
         """
         Call the LLM
         """

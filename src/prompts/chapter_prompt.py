@@ -236,7 +236,32 @@ CHAPTER_GENERATION_STAGE4_PROMPT = """
 
 CHAPTER_REVISION_PROMPT = """
 评论家们已经审阅了您的章节草稿，并提供了反馈和建议。
-请根据他们的反馈和建议对章节进行修改。请确保您遵循以下提示：
+请根据他们的反馈和建议对章节进行修改。
+
+以下是用户的需求，需要您特别注意：
+<USER_PROMPT>
+{_Prompt}
+</USER_PROMPT>
+
+以下是全文的大纲，供您参考：
+<OUTLINE>
+{_Outline}
+</OUTLINE>
+
+以下是上一章(第 {_LastChapterNum} 章)的总结，用于帮助您实现更好的衔接：
+<LAST_CHAPTER_SUMMARY>
+{_LastChapterSummary}
+</LAST_CHAPTER_SUMMARY>
+
+以下是下一章(第 {_NextChapterNum} 章)的总结，用于帮助您实现更好的衔接：
+<NEXT_CHAPTER_SUMMARY>
+{_NextChapterSummary}
+</NEXT_CHAPTER_SUMMARY>
+
+以下是本章（第 {_ChapterNum} 章）的章节大纲，供您参考：
+<CHAPTER_OUTLINE>
+{_ChapterOutline}
+</CHAPTER_OUTLINE>
 
 以下是您的章节草稿：
 
@@ -249,18 +274,23 @@ CHAPTER_REVISION_PROMPT = """
 {_Feedback}
 </FEEDBACK>
 
-以下是上一章的总结，用于帮助您实现更好的衔接：
-<CHAPTER_SUMMARY>
-{_LastChapterSummary}
-</CHAPTER_SUMMARY>
-
-以下是全文的大纲，供您参考：
-<OUTLINE>
-{_Outline}
-</OUTLINE>
+请参考<FEEDBACK>和</FEEDBACK>之间的内容，修改您位于<CHAPTER_CONTENT>和</CHAPTER_CONTENT>之间的章节内容。
 
 请勿对修改内容进行反思，只需根据反馈和提示标准撰写改进后的章节即可。不要体现你的思考，也不要体现你的修改过程，因为没有人会看。直接写出修改后的章节内容。要以文学性的方式表达，而不是以markdown格式罗列。
-切勿包含任何作者姓名"""
+
+您需要做的事情：
+- 根据评论家的反馈和建议，修改章节内容。
+- 确保章节内容与本章大纲一致。
+- 确保章节内容能与上一章(第 {_LastChapterNum} 章)和下一章(第 {_NextChapterNum} 章)无缝衔接。
+- 确保章节内容符合小说的整体风格和主题。
+- 以文学性的方式表达。
+
+您不能够做的事情：
+- 不要留下任何修改痕迹或评论。
+- 不要包含其它章节的内容。
+- 不要以markdown格式罗列章节内容。
+
+"""
 
 CHAPTER_EDIT_PROMPT = """
 <OUTLINE>

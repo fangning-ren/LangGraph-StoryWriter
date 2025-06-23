@@ -6,7 +6,7 @@ dist/
 wheels/
 *.egg-info
 
-# explicit contents (不要上传小黄文丢死人了)
+# explicit contents
 *R18*
 *.log
 *archive
